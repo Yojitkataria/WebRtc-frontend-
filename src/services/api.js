@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = https://webrtc-backend-u9y7.onrender.com/api || 'http://localhost:5000/api';
 
 class ApiService {
   constructor() {
