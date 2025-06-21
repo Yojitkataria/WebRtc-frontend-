@@ -2,12 +2,22 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
+const http = require('http');
 require('dotenv').config({ path: './config.env' });
 
 // Import routes
 const authRoutes = require('./routes/auth');
+const whiteboardRoutes = require('./routes/whiteboard');
+const roomRoutes = require('./routes/room');
+
+// Import socket
+const { initializeSocket } = require('./socket/whiteboardSocket');
 
 const app = express();
+const server = http.createServer(app);
+
+// Initialize Socket.io
+const io = initializeSocket(server);
 
 // Security middleware
 app.use(helmet());
@@ -26,6 +36,8 @@ app.use(cors({
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/whiteboards', whiteboardRoutes);
+app.use('/api/rooms', roomRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
@@ -74,10 +86,11 @@ const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   await connectDB();
   
-  app.listen(PORT, () => {
+  server.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
     console.log(`📡 API URL: http://localhost:${PORT}/api`);
+    console.log(`🔌 Socket.io initialized`);
   });
 };
 

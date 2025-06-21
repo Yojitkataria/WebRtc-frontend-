@@ -6,6 +6,7 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import DashboardPage from './pages/DashboardPage';
+import WhiteboardPage from './pages/WhiteboardPage';
 
 function App() {
   return (
@@ -21,6 +22,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <DashboardPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/whiteboard/:roomId" 
+              element={
+                <ProtectedRoute>
+                  <WhiteboardPage />
                 </ProtectedRoute>
               } 
             />

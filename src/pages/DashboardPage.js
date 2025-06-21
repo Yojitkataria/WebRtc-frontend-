@@ -13,9 +13,55 @@ const DashboardPage = () => {
     navigate('/');
   };
 
-  const handleStartWhiteboard = () => {
-    // TODO: Implement whiteboard functionality
-    alert('Whiteboard feature coming soon!');
+  const handleStartWhiteboard = async () => {
+    try {
+      // First create a whiteboard
+      const whiteboardResponse = await fetch('http://localhost:5000/api/whiteboards', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          name: `Whiteboard Session ${new Date().toLocaleString()}`,
+          description: 'New collaborative whiteboard session'
+        })
+      });
+
+      if (!whiteboardResponse.ok) {
+        throw new Error('Failed to create whiteboard');
+      }
+
+      const whiteboardData = await whiteboardResponse.json();
+      const whiteboardId = whiteboardData.data._id;
+
+      // Then create a room for the whiteboard
+      const roomResponse = await fetch('http://localhost:5000/api/rooms', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          whiteboardId: whiteboardId,
+          name: `Room for ${whiteboardData.data.name}`,
+          isPrivate: false
+        })
+      });
+
+      if (!roomResponse.ok) {
+        throw new Error('Failed to create room');
+      }
+
+      const roomData = await roomResponse.json();
+      const roomId = roomData.data.roomId;
+
+      // Navigate to the whiteboard
+      navigate(`/whiteboard/${roomId}`);
+    } catch (error) {
+      console.error('Error starting whiteboard:', error);
+      alert('Failed to start whiteboard session');
+    }
   };
 
   const handleStartVideoCall = () => {
