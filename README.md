@@ -1,4 +1,4 @@
-# WebRTC Collaboration Platform
+# doubleDoodle
 
 A modern React-based frontend application for a WebRTC collaboration platform featuring video calls and interactive whiteboard functionality, with a separate Express.js backend for authentication.
 

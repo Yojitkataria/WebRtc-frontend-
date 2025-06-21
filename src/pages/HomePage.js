@@ -10,7 +10,7 @@ const HomePage = () => {
         <Card className="mb-8">
           <div className="mb-8">
             <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-4">
-              WebRTC Collaboration Platform
+              doubleDoodle
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
               Experience seamless real-time collaboration with our advanced WebRTC platform. 
