@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import io from 'socket.io-client';
@@ -10,14 +10,17 @@ import Button from '../components/Button';
 const WhiteboardPage = () => {
   const { roomId } = useParams();
   const navigate = useNavigate();
-  const { user, token } = useAuth();
+  const { token } = useAuth();
   
+  const canvasRef = useRef(null);
   const [socket, setSocket] = useState(null);
   const [room, setRoom] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [brushColor, setBrushColor] = useState('#000000');
   const [brushSize, setBrushSize] = useState(5);
   const [isDrawingMode, setIsDrawingMode] = useState(true);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState(null);
 
@@ -41,6 +44,12 @@ const WhiteboardPage = () => {
 
     newSocket.on('disconnect', () => {
       console.log('Disconnected from server');
+      setIsConnected(false);
+    });
+
+    newSocket.on('connect_error', (err) => {
+      console.error('Socket Connection Error:', err.message);
+      setError(`Failed to connect to the whiteboard server: ${err.message}. Please try refreshing the page.`);
       setIsConnected(false);
     });
 
@@ -94,20 +103,34 @@ const WhiteboardPage = () => {
   }, [token, roomId]);
 
   const handleClear = () => {
-    if (socket) {
-      socket.emit('clear-canvas', { roomId });
+    if (!socket || !socket.connected) {
+      console.error('Socket not connected');
+      return;
+    }
+    
+    const confirmed = window.confirm('Are you sure you want to clear the entire whiteboard? This action cannot be undone.');
+    if (confirmed && canvasRef.current && canvasRef.current.clear) {
+      canvasRef.current.clear();
     }
   };
 
   const handleUndo = () => {
-    if (socket) {
-      socket.emit('undo-redo', { roomId, action: 'undo' });
+    if (!socket || !socket.connected) {
+      console.error('Socket not connected');
+      return;
+    }
+    if (canvasRef.current && canvasRef.current.undo) {
+      canvasRef.current.undo();
     }
   };
 
   const handleRedo = () => {
-    if (socket) {
-      socket.emit('undo-redo', { roomId, action: 'redo' });
+    if (!socket || !socket.connected) {
+      console.error('Socket not connected');
+      return;
+    }
+    if (canvasRef.current && canvasRef.current.redo) {
+      canvasRef.current.redo();
     }
   };
 
@@ -137,10 +160,10 @@ const WhiteboardPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex flex-col h-screen bg-gray-100 font-sans">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <header className="bg-white shadow-sm border-b border-gray-200 z-10 flex-shrink-0">
+        <div className="max-w-full mx-auto px-6">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
               <h1 className="text-xl font-semibold text-gray-900">
@@ -167,10 +190,10 @@ const WhiteboardPage = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <main className="flex-grow flex overflow-hidden">
+        <div className="grid grid-cols-12 flex-grow h-full">
           {/* Toolbar */}
-          <div className="lg:col-span-1">
+          <div className="col-span-2 bg-white border-r border-gray-200 overflow-y-auto">
             <WhiteboardToolbar
               brushColor={brushColor}
               setBrushColor={setBrushColor}
@@ -179,26 +202,32 @@ const WhiteboardPage = () => {
               onClear={handleClear}
               onUndo={handleUndo}
               onRedo={handleRedo}
+              canUndo={canUndo}
+              canRedo={canRedo}
               isDrawingMode={isDrawingMode}
               onToggleDrawingMode={handleToggleDrawingMode}
+              isConnected={isConnected}
             />
           </div>
 
           {/* Canvas */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-lg p-4">
+          <div className="col-span-8 flex items-center justify-center p-6 bg-gray-50">
+            <div className="w-full h-full bg-white rounded-lg shadow-md">
               <WhiteboardCanvas
+                ref={canvasRef}
                 roomId={roomId}
                 socket={socket}
                 isDrawingEnabled={isDrawingMode}
                 brushColor={brushColor}
                 brushSize={brushSize}
+                setCanUndo={setCanUndo}
+                setCanRedo={setCanRedo}
               />
             </div>
           </div>
 
-          {/* Chat */}
-          <div className="lg:col-span-1">
+          {/* Chat & Participants */}
+          <div className="col-span-2 bg-white border-l border-gray-200 flex flex-col h-full">
             <WhiteboardChat
               socket={socket}
               roomId={roomId}

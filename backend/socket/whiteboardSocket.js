@@ -2,6 +2,16 @@ const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
 const Room = require('../models/Room');
 const Whiteboard = require('../models/Whiteboard');
+const User = require('../models/User');
+
+const getRandomColor = () => {
+  const letters = '0123456789ABCDEF';
+  let color = '#';
+  for (let i = 0; i < 6; i++) {
+    color += letters[Math.floor(Math.random() * 16)];
+  }
+  return color;
+};
 
 let io;
 
@@ -24,6 +34,12 @@ const initializeSocket = (server) => {
       }
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded.id);
+
+      if (!user) {
+        return next(new Error('Authentication error: User not found'));
+      }
+
       socket.userId = decoded.id;
       socket.userName = decoded.name;
       next();
@@ -33,7 +49,8 @@ const initializeSocket = (server) => {
   });
 
   io.on('connection', (socket) => {
-    console.log(`User connected: ${socket.userName} (${socket.userId})`);
+    socket.userColor = getRandomColor();
+    console.log(`User connected: ${socket.userName} (${socket.userId}) with color ${socket.userColor}`);
 
     // Join a whiteboard room
     socket.on('join-whiteboard', async (data) => {
@@ -85,7 +102,8 @@ const initializeSocket = (server) => {
         // Notify others in the room
         socket.to(roomId).emit('user-joined', {
           userId: socket.userId,
-          userName: socket.userName
+          userName: socket.userName,
+          color: socket.userColor
         });
 
         // Send current participants to the new user
@@ -100,86 +118,21 @@ const initializeSocket = (server) => {
     });
 
     // Handle drawing actions
-    socket.on('drawing-action', async (data) => {
-      try {
-        const { roomId, action } = data;
-
-        // Broadcast to other users in the room
-        socket.to(roomId).emit('drawing-action', {
-          ...action,
-          userId: socket.userId,
-          userName: socket.userName,
-          timestamp: new Date()
-        });
-
-        // Save action to database if it's a permanent action
-        if (['draw', 'erase'].includes(action.type)) {
-          const room = await Room.findOne({ roomId });
-          if (room) {
-            const whiteboard = await Whiteboard.findById(room.whiteboardId);
-            if (whiteboard) {
-              whiteboard.drawingActions.push({
-                type: action.type,
-                userId: socket.userId,
-                userName: socket.userName,
-                data: action.data,
-                timestamp: new Date()
-              });
-              await whiteboard.save();
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Drawing action error:', error);
-      }
+    socket.on('drawing-action', (data) => {
+      const { roomId, action } = data;
+      // Broadcast to all users in the room, including the sender
+      io.in(roomId).emit('drawing-action', action);
     });
 
-    // Handle clear canvas
-    socket.on('clear-canvas', async (data) => {
-      try {
-        const { roomId } = data;
-
-        // Broadcast to other users
-        socket.to(roomId).emit('clear-canvas', {
-          userId: socket.userId,
-          userName: socket.userName,
-          timestamp: new Date()
-        });
-
-        // Save clear action to database
-        const room = await Room.findOne({ roomId });
-        if (room) {
-          const whiteboard = await Whiteboard.findById(room.whiteboardId);
-          if (whiteboard) {
-            whiteboard.drawingActions.push({
-              type: 'clear',
-              userId: socket.userId,
-              userName: socket.userName,
-              timestamp: new Date()
-            });
-            await whiteboard.save();
-          }
-        }
-      } catch (error) {
-        console.error('Clear canvas error:', error);
-      }
-    });
-
-    // Handle undo/redo
-    socket.on('undo-redo', async (data) => {
-      try {
-        const { roomId, action } = data;
-
-        // Broadcast to other users
-        socket.to(roomId).emit('undo-redo', {
-          action,
-          userId: socket.userId,
-          userName: socket.userName,
-          timestamp: new Date()
-        });
-      } catch (error) {
-        console.error('Undo/redo error:', error);
-      }
+    // Handle cursor movement
+    socket.on('cursor-move', (data) => {
+      const { roomId, position } = data;
+      socket.to(roomId).emit('cursor-moved', {
+        userId: socket.userId,
+        userName: socket.userName,
+        position,
+        color: socket.userColor,
+      });
     });
 
     // Handle chat messages
@@ -205,6 +158,11 @@ const initializeSocket = (server) => {
       });
     });
 
+    socket.on('leave-room', async (data) => {
+      const { roomId } = data;
+      socket.to(roomId).emit('cursor-remove', { userId: socket.userId });
+    });
+
     // Handle disconnection
     socket.on('disconnect', async () => {
       try {
@@ -227,6 +185,7 @@ const initializeSocket = (server) => {
               userId: socket.userId,
               userName: socket.userName
             });
+            socket.to(room.roomId).emit('cursor-remove', { userId: socket.userId });
           }
         }
 

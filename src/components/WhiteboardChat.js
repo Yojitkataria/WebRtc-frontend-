@@ -1,127 +1,99 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 const WhiteboardChat = ({ socket, roomId, participants }) => {
+  const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const [typingUsers, setTypingUsers] = useState([]);
-  const messagesEndRef = useRef(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  const chatEndRef = useRef(null);
 
   useEffect(() => {
     if (!socket) return;
 
     const handleChatMessage = (data) => {
-      setMessages(prev => [...prev, data]);
-    };
-
-    const handleTyping = (data) => {
-      if (data.isTyping) {
-        setTypingUsers(prev => [...prev.filter(user => user.userId !== data.userId), data]);
-      } else {
-        setTypingUsers(prev => prev.filter(user => user.userId !== data.userId));
-      }
+      setMessages((prev) => [...prev, data]);
     };
 
     socket.on('chat-message', handleChatMessage);
-    socket.on('typing', handleTyping);
 
     return () => {
       socket.off('chat-message', handleChatMessage);
-      socket.off('typing', handleTyping);
     };
   }, [socket]);
 
-  const sendMessage = (e) => {
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+  
+  const handleSubmit = (e) => {
     e.preventDefault();
-    if (newMessage.trim() && socket) {
-      socket.emit('chat-message', {
-        roomId,
-        message: newMessage.trim()
-      });
-      setNewMessage('');
-      setIsTyping(false);
-      socket.emit('typing', { roomId, isTyping: false });
+    if (message.trim() && socket) {
+      socket.emit('chat-message', { roomId, message });
+      setMessages((prev) => [
+        ...prev,
+        { message, userName: 'Me', timestamp: new Date() }
+      ]);
+      setMessage('');
     }
-  };
-
-  const handleTyping = (e) => {
-    setNewMessage(e.target.value);
-    if (!isTyping) {
-      setIsTyping(true);
-      socket?.emit('typing', { roomId, isTyping: true });
-    }
-  };
-
-  const stopTyping = () => {
-    setIsTyping(false);
-    socket?.emit('typing', { roomId, isTyping: false });
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-lg h-96 flex flex-col">
-      {/* Header */}
+    <div className="flex flex-col h-full bg-white">
+      {/* Participants List */}
       <div className="p-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Chat</h3>
-        <p className="text-sm text-gray-600">
-          {participants.length} participant{participants.length !== 1 ? 's' : ''} online
-        </p>
+        <h4 className="text-sm font-semibold text-gray-500 mb-2">
+          Participants ({participants.length})
+        </h4>
+        <ul className="space-y-2">
+          {participants.map((p) => (
+            <li key={p.user} className="flex items-center gap-2 text-sm text-gray-700">
+              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+              <span>{p.userName}</span>
+            </li>
+          ))}
+        </ul>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {messages.map((message, index) => (
-          <div key={index} className="flex flex-col">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-medium text-gray-900">
-                {message.userName}
-              </span>
-              <span className="text-xs text-gray-500">
-                {new Date(message.timestamp).toLocaleTimeString()}
-              </span>
-            </div>
-            <div className="bg-gray-100 rounded-lg p-3">
-              <p className="text-gray-800">{message.message}</p>
-            </div>
-          </div>
-        ))}
-        
-        {typingUsers.length > 0 && (
-          <div className="text-sm text-gray-500 italic">
-            {typingUsers.map(user => user.userName).join(', ')} typing...
-          </div>
-        )}
-        
-        <div ref={messagesEndRef} />
+      <div className="flex-grow p-4 overflow-y-auto">
+        <ul className="space-y-4">
+          {messages.map((msg, index) => (
+            <li key={index} className={`flex ${msg.userName === 'Me' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-xs p-3 rounded-lg ${
+                msg.userName === 'Me' 
+                  ? 'bg-blue-500 text-white' 
+                  : 'bg-gray-200 text-gray-800'
+              }`}>
+                <p className="text-sm">{msg.message}</p>
+                <p className={`text-xs mt-1 ${
+                  msg.userName === 'Me' ? 'text-blue-200' : 'text-gray-500'
+                }`}>
+                  {msg.userName} - {new Date(msg.timestamp).toLocaleTimeString()}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <div ref={chatEndRef} />
       </div>
 
       {/* Message Input */}
-      <form onSubmit={sendMessage} className="p-4 border-t border-gray-200">
-        <div className="flex gap-2">
+      <div className="p-4 border-t border-gray-200">
+        <form onSubmit={handleSubmit} className="flex gap-2">
           <input
             type="text"
-            value={newMessage}
-            onChange={handleTyping}
-            onBlur={stopTyping}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
             placeholder="Type a message..."
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-grow px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
             type="submit"
-            disabled={!newMessage.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+            disabled={!message.trim()}
           >
             Send
           </button>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   );
 };

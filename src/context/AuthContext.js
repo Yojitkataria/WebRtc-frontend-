@@ -92,6 +92,7 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
+    token: apiService.getToken(),
     login,
     logout,
     signup,

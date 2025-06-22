@@ -125,14 +125,14 @@ const getRoom = async (req, res) => {
 
     // Check if user has access to the whiteboard
     const whiteboard = room.whiteboardId;
-    const hasAccess = whiteboard.createdBy.toString() === userId ||
+    let hasAccess = whiteboard.createdBy.toString() === userId ||
       whiteboard.collaborators.some(c => c.user.toString() === userId);
 
     if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied to this room'
-      });
+      // If user doesn't have access, add them as a collaborator
+      whiteboard.collaborators.push({ user: userId });
+      await whiteboard.save();
+      hasAccess = true; // Grant access now
     }
 
     res.json({
