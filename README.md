@@ -164,6 +164,55 @@ Deploy to platforms like Heroku, Railway, or DigitalOcean.
 
 This project is licensed under the MIT License.
 
+## 🏗️ Architecture Diagram
+
+Here is a diagram illustrating how the frontend and backend files for the whiteboard functionality work together.
+
+```mermaid
+graph TD
+    subgraph "Frontend (React)"
+        A["WhiteboardPage.js<br>Manages state & socket connection"]
+        B["WhiteboardCanvas.js<br>Handles drawing on canvas with Fabric.js"]
+        C["WhiteboardToolbar.js<br>UI for brush, color, etc."]
+        D["WhitebordChat.js<br>Handles chat messages"]
+        
+        A --> B
+        A --> C
+        A --> D
+    end
+
+    subgraph "Backend (Node.js)"
+        E["server.js<br>Entry point, initializes Express & Socket.IO"]
+        F["socket/whiteboardSocket.js<br>Handles all real-time events"]
+        G["routes/whiteboard.js<br>Defines HTTP API endpoints"]
+        H["controllers/whiteboardController.js<br>Logic for API requests"]
+        I["models/Whiteboard.js<br>Database schema"]
+    end
+
+    subgraph "Communication Layer"
+        J["Socket.IO<br>(Real-time Events)"]
+        K["HTTP API<br>(REST for data)"]
+    end
+
+    %% Frontend -> Communication -> Backend
+    A -- "Connects to" --> J
+    B -- "Emits 'drawing-action'" --> J
+    D -- "Emits 'chat-message'" --> J
+    A -- "GET /api/whiteboards" --> K
+    
+    J --> F
+
+    K --> G
+    G --> H
+    H --> I
+
+    %% Backend -> Communication -> Frontend
+    F -- "Broadcasts 'drawing-action'" --> J
+    F -- "Broadcasts 'new-message'" --> J
+    J -- "Updates canvas" --> B
+    J -- "Updates chat" --> D
+```
+
 ## 🔮 Future Enhancements
 
 - [ ] WebRTC video call implementation
