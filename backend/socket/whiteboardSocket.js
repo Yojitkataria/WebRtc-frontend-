@@ -18,14 +18,36 @@ let io;
 const initializeSocket = (server) => {
   io = socketIo(server, {
     cors: {
-      origin: process.env.NODE_ENV === 'production' 
-        ? [
-            'https://webrtc-frontend-rkuo.onrender.com',
-            'https://*.vercel.app',
-            'https://*.vercel.app/*'
-          ] 
-        : ['http://localhost:3000', 'http://localhost:3001'],
-      credentials: true
+      origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        const allowedOrigins = [
+          'https://webrtc-frontend-rkuo.onrender.com',
+          'https://web-rtc-frontend-taupe.vercel.app',
+          'https://*.vercel.app',
+          'http://localhost:3000',
+          'http://localhost:3001'
+        ];
+        
+        // Check if the origin is allowed
+        const isAllowed = allowedOrigins.some(allowedOrigin => {
+          if (allowedOrigin.includes('*')) {
+            return origin.includes(allowedOrigin.replace('*', ''));
+          }
+          return origin === allowedOrigin;
+        });
+        
+        if (isAllowed) {
+          callback(null, true);
+        } else {
+          console.log('Socket CORS blocked origin:', origin);
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization']
     }
   });
 
