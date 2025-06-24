@@ -29,7 +29,11 @@ app.use(express.urlencoded({ extended: true }));
 // CORS
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-frontend-domain.com'] 
+    ? [
+        'https://webrtc-frontend-rkuo.onrender.com',
+        'https://*.vercel.app',
+        'https://*.vercel.app/*'
+      ] 
     : ['http://localhost:3000', 'http://localhost:3001'],
   credentials: true
 }));
