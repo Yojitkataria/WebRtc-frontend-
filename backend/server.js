@@ -34,6 +34,7 @@ app.use(cors({
     
     const allowedOrigins = [
       'https://webrtc-frontend-rkuo.onrender.com',
+      'https://doubledoodle.vercel.app',
       'https://web-rtc-frontend-taupe.vercel.app',
       'https://*.vercel.app',
       'http://localhost:3000',
