@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import Button from '../components/Button';
 import Card from '../components/Card';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
 const DashboardPage = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -16,7 +18,7 @@ const DashboardPage = () => {
   const handleStartWhiteboard = async () => {
     try {
       // First create a whiteboard
-      const whiteboardResponse = await fetch('http://localhost:5000/api/whiteboards', {
+      const whiteboardResponse = await fetch(`${API_BASE_URL}/whiteboards`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -36,7 +38,7 @@ const DashboardPage = () => {
       const whiteboardId = whiteboardData.data._id;
 
       // Then create a room for the whiteboard
-      const roomResponse = await fetch('http://localhost:5000/api/rooms', {
+      const roomResponse = await fetch(`${API_BASE_URL}/rooms`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

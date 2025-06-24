@@ -7,6 +7,9 @@ import WhiteboardToolbar from '../components/WhiteboardToolbar';
 import WhiteboardChat from '../components/WhiteboardChat';
 import Button from '../components/Button';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const SOCKET_URL = API_BASE_URL.replace('/api', '');
+
 const WhiteboardPage = () => {
   const { roomId } = useParams();
   const navigate = useNavigate();
@@ -28,7 +31,7 @@ const WhiteboardPage = () => {
   useEffect(() => {
     if (!token || !roomId) return;
 
-    const newSocket = io('http://localhost:5000', {
+    const newSocket = io(SOCKET_URL, {
       auth: {
         token: token
       }
@@ -80,7 +83,7 @@ const WhiteboardPage = () => {
   useEffect(() => {
     const fetchRoom = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/rooms/${roomId}`, {
+        const response = await fetch(`${API_BASE_URL}/rooms/${roomId}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
